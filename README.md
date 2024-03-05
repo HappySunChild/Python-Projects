@@ -1,2 +1,2 @@
-# Python-Projects
-A place for me to work on and share my python projects.
+# Python Projects
+A repository to store my python projects.
