@@ -14,7 +14,7 @@ PresenceColors = [
 ]
 
 def discordLog(activityType: str, fieldData: dict, color: int = 0, footer: str = None):
-	StatusEmbed = Embed('Ben Activity', f'{activityType} Update', color)
+	StatusEmbed = Embed('User Activity', f'{activityType} Update', color)
 	StatusEmbed.setUrl(TrackingUser.Link)
 	
 	for name, value in fieldData.items():
