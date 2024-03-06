@@ -1,6 +1,7 @@
 # RoAPI __init__.py
 
 import requests as http
+import logging as log
 from typing import Any, Callable
 from time import sleep
 from datetime import datetime
@@ -224,7 +225,7 @@ class Game(BaseData):
 			elif creatorType == 'Group':
 				creator = Group(base=creator)
 			else:
-				print("game don't got a creator")
+				log.error("game don't got a creator")
 		
 		self.Creator = creator
 	
