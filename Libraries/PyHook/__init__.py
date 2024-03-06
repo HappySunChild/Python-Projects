@@ -3,14 +3,14 @@
 import requests as http
 
 class Embed():
-	def __init__(self, title: str = None, desc: str = None, color: int = None) -> None:
+	def __init__(self, title: str = None, desc: str = None, **kwargs) -> None:
 		self.Title = title
 		self.Description = desc
-		self.Color = color
+		self.Color = kwargs.get('color')
 		
-		self.Url = None
-		self.Footer = None
-		self.Author = None
+		self.Url = kwargs.get('url')
+		self.Footer = kwargs.get('footer')
+		self.Author = kwargs.get('author')
 		
 		self.Fields = []
 	
@@ -68,7 +68,7 @@ class Webhook():
 		
 		return _send(self.Url, data)
 	
-	def SendEmbeds(self, *embeds: Embed):
+	def SendEmbeds(self, *embeds: Embed, message: str = None):
 		if len(embeds) <= 0:
 			return
 		
@@ -79,6 +79,7 @@ class Webhook():
 		
 		data = self.HttpData
 		data['embeds'] = embedData
+		data['content'] = message
 		
 		return _send(self.Url, data)
 	
@@ -95,10 +96,6 @@ class Webhook():
 	@property
 	def Url(self):
 		return f'https://discord.com/api/webhooks/{self.Id}/{self.Token}'
-	
-	@classmethod
-	def fromUrl(cls, url: str):
-		token = url.split()
 
 def _send(url: str, data: dict):
 	try:
