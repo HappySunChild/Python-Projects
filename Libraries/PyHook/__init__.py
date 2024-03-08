@@ -24,7 +24,7 @@ class Embed():
 		self.Color = color
 	
 	def addField(self, name: str, value: str, inline: bool = True):
-		self.Fields.append({'name': name, 'value': value, 'inline': inline})
+		self.Fields.append({'name': name, 'value': str(value), 'inline': inline})
 	
 	def setFooter(self, text: str):
 		self.Footer = {'text': text}
@@ -68,7 +68,7 @@ class Webhook():
 		
 		return _send(self.Url, data)
 	
-	def SendEmbeds(self, *embeds: Embed, message: str = None):
+	def SendEmbeds(self, *embeds: Embed, message: str = ''):
 		if len(embeds) <= 0:
 			return
 		
@@ -97,6 +97,18 @@ class Webhook():
 	def Url(self):
 		return f'https://discord.com/api/webhooks/{self.Id}/{self.Token}'
 
+class MultiHook():
+	def __init__(self, *webhooks: Webhook) -> None:
+		self.Webhooks = webhooks
+	
+	def SendMessage(self, message: str):
+		for hook in self.Webhooks:
+			hook.SendMessage(message)
+	
+	def SendEmbeds(self, *embeds: Embed, message: str = ''):
+		for hook in self.Webhooks:
+			hook.SendEmbeds(*embeds, message=message)
+
 def _send(url: str, data: dict):
 	try:
 		response = http.post(url, json=data)
@@ -104,6 +116,6 @@ def _send(url: str, data: dict):
 		
 		return response.ok
 	except http.exceptions.RequestException as e:
-		print(f'Error sending data: {e}\n{response.json()}')
+		print(f'Error sending data: \n{e}\n{response.json()}')
 		
 		return False
