@@ -1,8 +1,9 @@
 # RoAPI fetch.py
 
+import logging as log
 import requests as http
 
-_token = None
+gHeaders = {'cookie': None}
 base_url = 'roblox.com'
 
 class Page:
@@ -98,27 +99,38 @@ class Pager: # meant for endpoints that return pages of information
 	def __str__(self) -> str:
 		return f"Pager: [{self.BaseUrl}&cursor={self.PageCursor}&limit={self.PageSize}]"
 
+# Global Headers
+
 def setToken(newToken: str):
-	_token = newToken
-	
-	return _token
+	gHeaders['cookie'] = newToken
 
 def getToken():
-	return _token
+	return gHeaders.get('cookie')
+
+def setGHeader(header: str, value: str):
+	gHeaders[header] = value
+
+def getGHeaders():
+	return gHeaders
+
+# UrlGenerator
 
 def genUrl(subdomain = 'apis', path = '', protocol = 'https'):
 	return f'{protocol}://{subdomain}.{base_url}/{path}'
 
+# Fetch
+
 def fetch(url: str, json = None, method = 'get', headers = {}, default = None):
 	try:
-		if _token:
-			headers['cookie'] = _token
+		for header, value in gHeaders.items():
+			headers[header] = value
 		
 		response = http.request(url=url, json=json, method=method, headers=headers)
 		response.raise_for_status()
 		
 		return response.json()
 	except http.exceptions.HTTPError as e:
+		log.warning(e)
 		#log.warning('A ROBLOSECURITY token is required to access this endpoint.')
 		pass
 	

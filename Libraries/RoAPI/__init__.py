@@ -97,7 +97,7 @@ class UserPresence(BaseData):
 		self.LastLocation = jsonInfo.get('lastLocation', 'Offline')
 		self.LastOnline = parse(jsonInfo.get('lastOnline'))
 		
-		self.JobId = jsonInfo.get('jobId')
+		self.JobId = jsonInfo.get('gameId')
 		self.PlaceId = jsonInfo.get('rootPlaceId', 1)
 		self.UniverseId = jsonInfo.get('universeId', 1)
 		
