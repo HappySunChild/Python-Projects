@@ -1,6 +1,30 @@
 # PyHook __init__.py
 
 import requests as http
+from dateutil.parser import parse
+
+class Message():
+	def __init__(self, message_data: dict) -> None:
+		self.ChannelId = message_data.get('channel_id', -1)
+		self.Id = message_data.get('id', -1)
+		self.Type = message_data.get('type', -1)
+		
+		self.Content = message_data.get('content', '')
+		self.Embeds = message_data.get('embeds', [])
+		
+		self.PostTimestamp = parse(message_data.get('timestamp', 0))
+		
+		self.Raw = message_data
+		
+		#self.EditTimestamp = parse(message_data.get('edited_timestamp'))
+	
+	def GetHttpData(self):
+		data = {
+			'content': self.Content,
+			'embeds': self.Embeds
+		}
+		
+		return data
 
 class Embed():
 	def __init__(self, title: str = None, desc: str = None, **kwargs) -> None:
@@ -14,6 +38,9 @@ class Embed():
 		
 		self.Fields = []
 	
+	def addField(self, name: str, value: str, inline: bool = True):
+		self.Fields.append({'name': name, 'value': str(value), 'inline': inline})
+	
 	def setTitle(self, title: str):
 		self.Title = title
 	
@@ -22,9 +49,6 @@ class Embed():
 	
 	def setColor(self, color: int):
 		self.Color = color
-	
-	def addField(self, name: str, value: str, inline: bool = True):
-		self.Fields.append({'name': name, 'value': str(value), 'inline': inline})
 	
 	def setFooter(self, text: str):
 		self.Footer = {'text': text}
@@ -35,8 +59,7 @@ class Embed():
 	def setUrl(self, url: str):
 		self.Url = url
 	
-	@property
-	def HttpData(self):
+	def GetHttpData(self):
 		data = {
 			'title': self.Title,
 			'description': self.Description,
@@ -52,8 +75,9 @@ class Embed():
 		return data
 
 class Webhook():
-	Id = ''
-	Token = ''
+	'''
+	Instance responsible for sending requests to discord.
+	'''
 	
 	def __init__(self, id: int, token: str) -> None:
 		self.Id = id
@@ -61,30 +85,55 @@ class Webhook():
 		
 		self.Name = None
 		self.AvatarUrl = None
-	
-	def SendMessage(self, message: str):
-		data = self.HttpData
-		data['content'] = message
 		
-		return _send(self.Url, data)
+		self.LastMessage = None
 	
-	def SendEmbeds(self, *embeds: Embed, message: str = ''):
-		if len(embeds) <= 0:
+	def Delete(self, message: Message):
+		if not isinstance(message, Message):
 			return
+		
+		_request(f'{self.Url}/messages/{message.Id}', method='delete')
+	
+	def Edit(self, message: Message = None, text: str = '', *embeds: Embed):
+		'''
+		Edits a given message.
+		'''
+		
+		if not isinstance(message, Message):
+			if not self.LastMessage or not message:
+				return self.Send(text, *embeds)
+			else:
+				message = self.LastMessage
+		
+		data = message.GetHttpData()
+		data['content'] = text or data['content']
+		
+		if len(embeds) > 0:
+			data['embeds'] = embeds
+		
+		_request(f'{self.Url}/messages/{message.Id}', data, 'patch')
+		
+		return message
+	
+	def Send(self, text: str = '', *embeds: Embed):
+		'''
+		Sends a message with the webhook.
+		'''
 		
 		embedData = []
 		
 		for embed in embeds:
-			embedData.append(embed.HttpData if isinstance(embed, Embed) else embed)
+			embedData.append(embed.GetHttpData() if isinstance(embed, Embed) else embed)
 		
-		data = self.HttpData
+		data = self.GetHttpData()
+		data['content'] = text
 		data['embeds'] = embedData
-		data['content'] = message
 		
-		return _send(self.Url, data)
+		self.LastMessage = _send_message(self.Url, data)
+		
+		return self.LastMessage
 	
-	@property
-	def HttpData(self):
+	def GetHttpData(self):
 		data = {
 			'username': self.Name,
 			'avatar_url': self.AvatarUrl,
@@ -98,24 +147,47 @@ class Webhook():
 		return f'https://discord.com/api/webhooks/{self.Id}/{self.Token}'
 
 class MultiHook():
+	'''
+	Interface for sending messages with multiple webhooks.
+	'''
+	
 	def __init__(self, *webhooks: Webhook) -> None:
 		self.Webhooks = webhooks
 	
-	def SendMessage(self, message: str):
-		for hook in self.Webhooks:
-			hook.SendMessage(message)
+	def AddWebhook(self, webhook: Webhook):
+		if not webhook:
+			return
+		
+		self.Webhooks.append(webhook)
 	
-	def SendEmbeds(self, *embeds: Embed, message: str = ''):
+	def Send(self, text: str = '', *embeds: Embed):
+		'''
+		Automatically sends a message to each webhook.
+		'''
+		
 		for hook in self.Webhooks:
-			hook.SendEmbeds(*embeds, message=message)
+			hook.Send(text, *embeds)
+	
+	def Edit(self, text: str = '', *embeds: Embed):
+		'''
+		Automatically edits the last message sent by each webhook.
+		'''
+		
+		for hook in self.Webhooks:
+			hook.Edit(None, text, *embeds)
 
-def _send(url: str, data: dict):
+def _request(url: str, data: dict = None, method: str = 'post'):
 	try:
-		response = http.post(url, json=data)
+		response = http.request(method, url, json=data, headers={'content-type': 'application/json'})
 		response.raise_for_status()
 		
-		return response.ok
-	except http.exceptions.RequestException as e:
-		print(f'Error sending data: \n{e}\n{response.json()}')
-		
-		return False
+		return response
+	except http.exceptions.HTTPError as e:
+		print(e)
+	
+	return None
+
+def _send_message(url: str, data: dict):
+	response = _request(f'{url}?wait=true', data, 'post')
+	
+	return Message(response.json())
