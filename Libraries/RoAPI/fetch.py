@@ -131,7 +131,8 @@ def fetch(url: str, json = None, method = 'get', headers = {}, default = None):
 		return response.json()
 	except http.exceptions.HTTPError as e:
 		log.warning(e)
-		#log.warning('A ROBLOSECURITY token is required to access this endpoint.')
-		pass
+		
+		if response:
+			print(response)
 	
 	return default

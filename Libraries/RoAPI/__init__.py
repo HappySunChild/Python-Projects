@@ -22,7 +22,7 @@ PresenceTypes = [
 
 class BaseData:
 	FormatString = r'ID: {0.Id} NAME: {0.Name}'
-	CacheVar = None
+	CacheName = None
 	
 	def __init__(self, jsonInfo: dict = None) -> None:
 		if not jsonInfo:
@@ -33,8 +33,8 @@ class BaseData:
 		
 		self.Raw = jsonInfo
 		
-		if self.CacheVar:
-			Cache[self.CacheVar][self.Id] = self.Raw
+		if self.CacheName:
+			Cache[self.CacheName][self.Id] = self.Raw
 	
 	def __repr__(self) -> str:
 		return str(self)
@@ -80,8 +80,8 @@ class Badge(BaseData):
 		self.Enabled = jsonInfo.get('enabled', True)
 		self.Description = jsonInfo.get('description', 'DESC')
 		
-		self.Created = parse(jsonInfo.get('created'))
-		self.Updated = parse(jsonInfo.get('updated'))
+		self.Created = parse(jsonInfo.get('created')).timestamp()
+		self.Updated = parse(jsonInfo.get('updated')).timestamp()
 	
 	@property
 	def Link(self):
@@ -95,7 +95,7 @@ class UserPresence(BaseData):
 		
 		self.PresenceType = jsonInfo.get('userPresenceType', 0)
 		self.LastLocation = jsonInfo.get('lastLocation', 'Offline')
-		self.LastOnline = parse(jsonInfo.get('lastOnline'))
+		self.LastOnline = parse(jsonInfo.get('lastOnline')).timestamp()
 		
 		self.JobId = jsonInfo.get('gameId')
 		self.PlaceId = jsonInfo.get('rootPlaceId', 1)
@@ -112,11 +112,16 @@ class UserPresence(BaseData):
 
 class Game(BaseData):
 	FormatString = r'Game: {0.Name} [{0.Link}]'
-	CacheVar = 'games'
+	CacheName = 'games'
 	
 	def __init__(self, placeId: int = None, jsonInfo: dict = None) -> None:
 		if placeId and not jsonInfo:
-			jsonInfo = _search(Cache[self.CacheVar], placeId, resolveCallback=games.info, resolveArgs=[placeId])
+			jsonInfo = _search(
+				Cache[self.CacheName],
+				placeId,
+				resolveCallback=games.info,
+				resolveArgs=[placeId]
+			)
 		
 		super().__init__(jsonInfo)
 		
@@ -130,8 +135,8 @@ class Game(BaseData):
 		self.Favorites = jsonInfo.get('favoritedCount', 0)
 		self.MaxServerSize = jsonInfo.get('maxPlayers', -1)
 		
-		self.Created = parse(jsonInfo.get('created'))
-		self.Updated = parse(jsonInfo.get('updated'))
+		self.Created = parse(jsonInfo.get('created')).timestamp()
+		self.Updated = parse(jsonInfo.get('updated')).timestamp()
 		
 		creator = jsonInfo.get('creator')
 		
@@ -157,12 +162,12 @@ class Game(BaseData):
 		self.__init__(jsonInfo=newData)
 
 class User(BaseData):
-	FormatString = 'User: {0.FullName} [{0.Link}] Banned: {0.IsBanned}'
-	CacheVar = 'users'
+	FormatString = 'User: {0.FullName} [{0.Link}]'
+	CacheName = 'users'
 	
 	def __init__(self, userId: int = None, jsonInfo: dict = None) -> None:
 		if userId and not jsonInfo:
-			jsonInfo = _search(Cache[self.CacheVar], userId, resolveCallback=users.info, resolveArgs=[userId])
+			jsonInfo = _search(Cache[self.CacheName], userId, resolveCallback=users.info, resolveArgs=[userId])
 		
 		super().__init__(jsonInfo=jsonInfo)
 		
@@ -185,7 +190,7 @@ class User(BaseData):
 	
 	@property
 	def FullName(self):
-		return f'{self.DisplayName:20} @{self.Name:20}'
+		return f'{self.DisplayName} @{self.Name}'
 	
 	def getPresence(self):
 		if self.Presence:
@@ -265,11 +270,11 @@ class User(BaseData):
 
 class Group(BaseData):
 	FormatString = r'Group: {0.Name} [{0.Link}]'
-	CacheVar = 'groups'
+	CacheName = 'groups'
 	
 	def __init__(self, groupId: int = None, jsonInfo: dict = None) -> None:
 		if groupId and not jsonInfo:
-			jsonInfo = _search(Cache[self.CacheVar], groupId, resolveCallback=groups.info, resolveArgs=[groupId])
+			jsonInfo = _search(Cache[self.CacheName], groupId, resolveCallback=groups.info, resolveArgs=[groupId])
 		
 		super().__init__(jsonInfo)
 		
@@ -338,11 +343,3 @@ def _search(object: dict, *indices: str, resolveCallback = None, resolveArgs: li
 		default = resolveCallback(*resolveArgs)
 	
 	return default
-
-# badge methods
-
-if __name__ == "__main__":
-	u = User(223478192)
-	
-	for badge in u.getBadges(1, 10):
-		print(badge)
